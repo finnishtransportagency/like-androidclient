@@ -1,0 +1,42 @@
+<configuration debug="true">
+  <property name="LOG_DIR" value="/sdcard/mattersoft" />
+
+  <!-- File appender -->
+  <appender name="file" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+      <level>DEBUG</level>
+    </filter>
+
+    <file>${LOG_DIR}/like-log.txt</file>
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <!-- daily rollover -->
+      <fileNamePattern>${LOG_DIR}/like-log-%d{yyyy-MM-dd}.%i.txt.zip</fileNamePattern>
+      <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+        <!-- or whenever the file size reaches 5MB -->
+        <maxFileSize>5MB</maxFileSize>
+      </timeBasedFileNamingAndTriggeringPolicy>
+      <!-- keep 14 days' worth of history -->
+      <maxHistory>14</maxHistory>
+    </rollingPolicy>
+
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{10} - %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <!-- console appender -->
+  <!-- Logcat appender cannot log from different threads? Console appender seems to work better. -->
+  <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+    <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+      <level>TRACE</level>
+    </filter>
+    <encoder>
+      <pattern>%msg</pattern>
+    </encoder>
+  </appender>
+
+  <root level="TRACE">
+    <appender-ref ref="console" />
+    <appender-ref ref="file" />
+  </root>
+</configuration>

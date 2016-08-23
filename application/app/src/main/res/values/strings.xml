@@ -1,3 +1,35 @@
 <resources>
-    <string name="app_name">LiVi-LiKe</string>
+    <string name="app_name">LiKe</string>
+
+    <string name="livi_title">Liikennevirasto - LiKe</string>
+
+    <string name="tracking_on">Tiedonkeruu käynnissä</string>
+    <string name="tracking_off">Tiedonkeruu ei käynnissä</string>
+    <string name="tracking_disabled">Seuranta estetty</string>
+    <string name="disable_like_button">Estä seuranta</string>
+    <string name="enable_like_button">Salli seuranta</string>
+
+    // dialogs
+
+    <string name="user_id_dialog_title">Käyttäjätunnus</string>
+
+    <string name="pin_code_dialog_title">PIN-koodi</string>
+    <string name="pin_code_dialog_content">Luodaksesi itsellesi käyttäjätilin, anna vapaavalintainen nelinumeroinen PIN-koodi.</string>
+    <string name="pin_code_dialog_save_button">Tallenna</string>
+
+    <string name="user_instructions_dialog_title">Ohjeet</string>
+    <string name="user_instructions_dialog_content">Käyttäjän rekisteröinti onnistui!\n\nSovellus kerää automaattisesti tietoa liikkumisestasi.\n\nKerättyä tietoa liikkumisestasi pääset tarkastelemaan erillisen web-käyttöliittymän avulla osoitteessa like.mattersoft.fi.\n\nKäyttäjätunnuksesi löydät käyttöliittymän napista ja salasanana toimii nelinumeroinen PIN-koodi, jonka annoit käyttäjätilin luonnin yhteydessä.</string>
+
+    // actions
+
+    <string name="show_user_id_action">Näytä käyttäjätunnukseni</string>
+
+    // errors
+
+    <string name="error_title">Ongelma</string>
+    <string name="user_loading_failed">Käyttäjän lataus epäonnistui. Käynnistä puhelin uudelleen.</string>
+
+    // content descriptions
+
+    <string name="logo_content_description">Liikennevirasto logo</string>
 </resources>
