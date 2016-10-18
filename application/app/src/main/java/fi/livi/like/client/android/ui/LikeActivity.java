@@ -13,26 +13,30 @@ import android.support.v4.app.NotificationManagerCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.view.View;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import org.slf4j.LoggerFactory;
 
+import java.util.Date;
+
 import fi.livi.like.client.android.R;
-import fi.livi.like.client.android.background.LikeService;
 import fi.livi.like.client.android.background.http.HttpLoader;
 import fi.livi.like.client.android.background.service.BackgroundService;
 import fi.livi.like.client.android.background.service.NotificationHandler;
+import fi.livi.like.client.android.background.tracking.TrackingDisabledHandler;
 import fi.livi.like.client.android.background.tracking.TrackingStateMachine;
 import fi.livi.like.client.android.background.user.UserManager;
-import fi.livi.like.client.android.broadcastreceivers.StateChangeBroadcastReceiver;
+import fi.livi.like.client.android.broadcastreceivers.StateChangeReceiver;
 import fi.livi.like.client.android.broadcastreceivers.UserLoadingCompletedReceiver;
-import fi.livi.like.client.android.broadcastreceivers.UserManagerBroadcastReceiver;
+import fi.livi.like.client.android.broadcastreceivers.UserManagerReceiver;
 import fi.livi.like.client.android.ui.components.NotifierDialog;
 import fi.livi.like.client.android.ui.util.RuntimePermissionChecker;
+import fi.livi.like.client.android.ui.util.TimeFormatter;
 
 public class LikeActivity extends BaseActivity
         implements RuntimePermissionChecker.Listener, NotifierDialog.Listener, PinCodeDialog.Listener,
-        StateChangeBroadcastReceiver.Listener, UserManagerBroadcastReceiver.Listener, UserLoadingCompletedReceiver.Listener {
+        StateChangeReceiver.Listener, UserManagerReceiver.Listener, UserLoadingCompletedReceiver.Listener {
 
     private static final org.slf4j.Logger log = LoggerFactory.getLogger(LikeActivity.class);
     private static final String ERROR_DIALOG_TAG = "errorDialog";
@@ -41,12 +45,14 @@ public class LikeActivity extends BaseActivity
 
     private RuntimePermissionChecker runtimePermissionChecker = new RuntimePermissionChecker(this);
 
-    private UserManagerBroadcastReceiver userManagerBroadcastReceiver;
-    private StateChangeBroadcastReceiver stateChangeBroadcastReceiver;
+    private UserManagerReceiver userManagerReceiver;
+    private StateChangeReceiver stateChangeReceiver;
     private UserLoadingCompletedReceiver userLoadingCompletedReceiver;
     private NotificationHandler notificationHandler;
     private TextView trackingTextView;
-    private Button enableDisableButton;
+    private LinearLayout disableTrackingViewGroup;
+    private Button cancelDisabledTrackingButton;
+    private SettingsChecker settingsChecker;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,8 +60,9 @@ public class LikeActivity extends BaseActivity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_like);
         runtimePermissionChecker.setListener(this);
-        trackingTextView = (TextView)findViewById(R.id.tracking_text_view);
-        enableDisableButton = (Button)findViewById(R.id.enable_disable_tracking_button);
+        trackingTextView = (TextView)findViewById(R.id.livi_tracking_text_view);
+        disableTrackingViewGroup = (LinearLayout) findViewById(R.id.livi_disable_tracking_group);
+        cancelDisabledTrackingButton = (Button) findViewById(R.id.livi_cancel_disabled_tracking_button);
         notificationHandler = new NotificationHandler(getBaseContext(), NotificationManagerCompat.from(this));
         registerBroadcastReceivers();
     }
@@ -75,15 +82,15 @@ public class LikeActivity extends BaseActivity
     }
 
     private void registerBroadcastReceivers() {
-        if (userManagerBroadcastReceiver == null) {
-            userManagerBroadcastReceiver = new UserManagerBroadcastReceiver(this);
+        if (userManagerReceiver == null) {
+            userManagerReceiver = new UserManagerReceiver(this);
             LocalBroadcastManager.getInstance(this).registerReceiver(
-                    userManagerBroadcastReceiver, new IntentFilter(UserManager.BROADCAST_ACTION_ID));
+                    userManagerReceiver, new IntentFilter(UserManager.BROADCAST_ACTION_ID));
         }
-        if (stateChangeBroadcastReceiver == null) {
-            stateChangeBroadcastReceiver = new StateChangeBroadcastReceiver(this);
+        if (stateChangeReceiver == null) {
+            stateChangeReceiver = new StateChangeReceiver(this);
             LocalBroadcastManager.getInstance(this).registerReceiver(
-                    stateChangeBroadcastReceiver, new IntentFilter(TrackingStateMachine.BROADCAST_ACTION_ID));
+                    stateChangeReceiver, new IntentFilter(TrackingStateMachine.BROADCAST_ACTION_ID));
         }
     }
 
@@ -107,14 +114,28 @@ public class LikeActivity extends BaseActivity
 
     public void onGooglePlayServicesPrepared() {
         if (runtimePermissionChecker.checkAndHandleRuntimePermissions()) {
-            resumeOnBackgroundService();
+            checkSettingsEnabled();
         } // if not granted, requests from user -> permissionsGranted()
     }
 
     @Override
     public void permissionsGranted() {
         log.info("permissionsGranted");
-        resumeOnBackgroundService();
+        checkSettingsEnabled();
+    }
+
+    private void checkSettingsEnabled() {
+        if (settingsChecker == null) {
+            settingsChecker = new SettingsChecker(this);
+        }
+
+        if (settingsChecker.isSettingsEnabled()) {
+            resumeOnBackgroundService();
+        } else {
+            log.warn("related settings not enabled, notify user!");
+        }
+
+        settingsChecker = null;
     }
 
     private void resumeOnBackgroundService() {
@@ -129,10 +150,14 @@ public class LikeActivity extends BaseActivity
     }
 
     public void disableLikeTracking(View view) {
-        LikeService likeService = getBackgroundService().getLikeService();
-        likeService.setDisabled(!likeService.isDisabled());
-        enableDisableButton.setText(getText(
-                likeService.isDisabled() ? R.string.enable_like_button : R.string.disable_like_button));
+        log.info("ui - disabling tracking");
+        getBackgroundService().getLikeService().setTrackingDisabled(
+                TrackingDisabledHandler.DisabledTime.valueOf(view.getTag().toString()));
+    }
+
+    public void cancelDisabledLikeTracking(View view) {
+        log.info("ui - cancel disabled tracking");
+        getBackgroundService().getLikeService().setTrackingEnabled();
     }
 
     @Override
@@ -141,9 +166,20 @@ public class LikeActivity extends BaseActivity
     }
 
     @Override
-    public void onTrackingStateChanged(TrackingStateMachine.State newState) {
+    public void onTrackingStateChanged(TrackingStateMachine.State newState, Date disabledTimeStarted, Date disabledTimeEnds, int disabledTimeInMs) {
         log.info("ui notified with state: " + newState);
-        trackingTextView.setText(getString(TrackingStateMachine.getTrackingStringResourceId(newState)));
+        if (newState == TrackingStateMachine.State.DISABLED) {
+            disableTrackingViewGroup.setVisibility(View.INVISIBLE);
+            cancelDisabledTrackingButton.setVisibility(View.VISIBLE);
+            trackingTextView.setText(
+                    String.format(getString(R.string.tracking_disabled_in_detail),
+                            TimeFormatter.formatToLocalDateTime(TimeFormatter.DDMMYYYY_DATE_FORMAT, disabledTimeStarted),
+                            TimeFormatter.formatToLocalDateTime(TimeFormatter.TIME_FORMAT_NO_SECONDS, disabledTimeEnds)));
+        } else {
+            trackingTextView.setText(getString(TrackingStateMachine.getShortTrackingStringResourceId(newState)));
+            disableTrackingViewGroup.setVisibility(View.VISIBLE);
+            cancelDisabledTrackingButton.setVisibility(View.INVISIBLE);
+        }
     }
 
     @Override

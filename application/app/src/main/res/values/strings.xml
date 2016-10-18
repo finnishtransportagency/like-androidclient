@@ -6,8 +6,12 @@
     <string name="tracking_on">Tiedonkeruu käynnissä</string>
     <string name="tracking_off">Tiedonkeruu ei käynnissä</string>
     <string name="tracking_disabled">Seuranta estetty</string>
-    <string name="disable_like_button">Estä seuranta</string>
-    <string name="enable_like_button">Salli seuranta</string>
+    <string name="tracking_disabled_in_detail">Seurannan esto asetettu %1$s klo %2$s asti</string>
+    <string name="disable_tracking_text">Estä seuranta:</string>
+    <string name="disable_like_button_1h">1 h</string>
+    <string name="disable_like_button_12h">12 h</string>
+    <string name="disable_like_button_24h">24 h</string>
+    <string name="cancel_disabled_tracking_like_button">Peruuta seurannan esto</string>
 
     // dialogs
 
@@ -20,6 +24,9 @@
     <string name="user_instructions_dialog_title">Ohjeet</string>
     <string name="user_instructions_dialog_content">Käyttäjän rekisteröinti onnistui!\n\nSovellus kerää automaattisesti tietoa liikkumisestasi.\n\nKerättyä tietoa liikkumisestasi pääset tarkastelemaan erillisen web-käyttöliittymän avulla osoitteessa like.mattersoft.fi.\n\nKäyttäjätunnuksesi löydät käyttöliittymän napista ja salasanana toimii nelinumeroinen PIN-koodi, jonka annoit käyttäjätilin luonnin yhteydessä.</string>
 
+    <string name="permissions_phone">Sovellus käyttää puhelimen IMEI-koodia osana käyttäjän tunnistusta ja sen lukemiseen tarvitaan puhelimen käyttöoikeus.</string>
+    <string name="permissions_location">Seuratakseen käyttäjän liikkeitä sovellus tarvitsee puhelimen sijainnin käyttöoikeuden.</string>
+    <string name="permissions_file">Sovellus kerää toiminnastaan logia, jonka tiedostoon keräämiseen tarvitaan tiedostojen käyttöoikeus. Logia ei lähetetä mihinkään ilman käyttäjän lupaa.</string>
     // actions
 
     <string name="show_user_id_action">Näytä käyttäjätunnukseni</string>
@@ -27,6 +34,8 @@
     // errors
 
     <string name="error_title">Ongelma</string>
+    <string name="gps_not_enabled">Salli paikannus asetuksista</string>
+    <string name="mobile_data_not_enabled">Salli mobiilidata asetuksista</string>
     <string name="user_loading_failed">Käyttäjän lataus epäonnistui. Käynnistä puhelin uudelleen.</string>
 
     // content descriptions

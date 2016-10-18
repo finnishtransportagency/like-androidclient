@@ -3,20 +3,27 @@ package fi.livi.like.client.android.background;
 import org.junit.Before;
 import org.junit.Test;
 
+import fi.livi.like.client.android.background.data.DataStorage;
 import fi.livi.like.client.android.background.datacollectors.activityrecognition.LikeActivityAverager;
 import fi.livi.like.client.android.dependencies.backend.LikeActivity;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class LikeActivityAveragerUnitTest {
 
-    LikeActivityAverager likeActivityAverager;
+    private LikeActivityAverager likeActivityAverager;
+
+    private DataStorage dataStorage;
 
     @Before
     public void setup() {
-        likeActivityAverager = new LikeActivityAverager();
+        dataStorage = mock(DataStorage.class);
+
+        likeActivityAverager = new LikeActivityAverager(dataStorage);
     }
 
     @Test
@@ -24,6 +31,15 @@ public class LikeActivityAveragerUnitTest {
         likeActivityAverager.onLikeActivityUpdate(null);
 
         assertThat(likeActivityAverager.getAverageLikeActivity(), is(nullValue()));
+    }
+
+    @Test
+    public void should_return_same_if_set_on_datastorage() {
+        LikeActivity likeActivity = new LikeActivity(LikeActivity.Type.IN_VEHICLE, 22);
+        when(dataStorage.getLastAverageLikeActivity()).thenReturn(likeActivity);
+        likeActivityAverager = new LikeActivityAverager(dataStorage);
+
+        assertThat(likeActivityAverager.getAverageLikeActivity(), is(likeActivity));
     }
 
     @Test
@@ -88,6 +104,30 @@ public class LikeActivityAveragerUnitTest {
 
         assertThat(likeActivityAverager.getAverageLikeActivity().getType(), is(LikeActivity.Type.ON_BICYCLE));
         assertThat(likeActivityAverager.getAverageLikeActivity().getConfidence(), is(17));
+    }
+
+    @Test
+    public void should_give_more_weight_on_activity_type_if_confidence_high_enough() {
+        likeActivityAverager.onLikeActivityUpdate(new LikeActivity(LikeActivity.Type.RUNNING, 22));
+        likeActivityAverager.onLikeActivityUpdate(new LikeActivity(LikeActivity.Type.RUNNING, 33));
+        likeActivityAverager.onLikeActivityUpdate(new LikeActivity(LikeActivity.Type.RUNNING, 22));
+        likeActivityAverager.onLikeActivityUpdate(new LikeActivity(LikeActivity.Type.RUNNING, 22));
+        likeActivityAverager.onLikeActivityUpdate(new LikeActivity(LikeActivity.Type.RUNNING, 22));
+        likeActivityAverager.onLikeActivityUpdate(new LikeActivity(LikeActivity.Type.ON_BICYCLE, 80));
+
+        assertThat(likeActivityAverager.getAverageLikeActivity().getType(), is(LikeActivity.Type.ON_BICYCLE));
+        assertThat(likeActivityAverager.getAverageLikeActivity().getConfidence(), is(80));
+    }
+
+    @Test
+    public void should_not_give_more_weight_on_activity_type_when_confidence_high_enough_but_same_activity_type() {
+        likeActivityAverager.onLikeActivityUpdate(new LikeActivity(LikeActivity.Type.RUNNING, 22));
+        likeActivityAverager.onLikeActivityUpdate(new LikeActivity(LikeActivity.Type.RUNNING, 80));//if this would give more weight, 2 BICYCLEs would not change average activity
+        likeActivityAverager.onLikeActivityUpdate(new LikeActivity(LikeActivity.Type.ON_BICYCLE, 18));
+        likeActivityAverager.onLikeActivityUpdate(new LikeActivity(LikeActivity.Type.ON_BICYCLE, 30));
+
+        assertThat(likeActivityAverager.getAverageLikeActivity().getType(), is(LikeActivity.Type.ON_BICYCLE));
+        assertThat(likeActivityAverager.getAverageLikeActivity().getConfidence(), is(30));
     }
 
     @Test

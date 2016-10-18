@@ -6,7 +6,7 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.os.PowerManager;
+import android.os.Build;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationManagerCompat;
 import android.support.v4.app.TaskStackBuilder;
@@ -14,12 +14,14 @@ import android.support.v4.content.LocalBroadcastManager;
 
 import org.slf4j.LoggerFactory;
 
+import java.util.Date;
+
 import fi.livi.like.client.android.R;
 import fi.livi.like.client.android.background.tracking.TrackingStateMachine;
-import fi.livi.like.client.android.broadcastreceivers.StateChangeBroadcastReceiver;
+import fi.livi.like.client.android.broadcastreceivers.StateChangeReceiver;
 import fi.livi.like.client.android.ui.LikeActivity;
 
-public class NotificationHandler implements StateChangeBroadcastReceiver.Listener {
+public class NotificationHandler implements StateChangeReceiver.Listener {
 
     private final static org.slf4j.Logger log = LoggerFactory.getLogger(NotificationHandler.class);
     private static int APP_NOTIFICATION_ID = 100;
@@ -28,15 +30,15 @@ public class NotificationHandler implements StateChangeBroadcastReceiver.Listene
     private final NotificationManagerCompat notificationManager;
 
     private NotificationCompat.Builder notificationBuilder;
-    private StateChangeBroadcastReceiver stateChangeBroadcastReceiver;
+    private StateChangeReceiver stateChangeReceiver;
 
     public NotificationHandler(Context context, NotificationManagerCompat notificationManager) {
         log.info("creating notification handler");
         this.context = context;
         this.notificationManager = notificationManager;
-        stateChangeBroadcastReceiver = new StateChangeBroadcastReceiver(this);
+        stateChangeReceiver = new StateChangeReceiver(this);
         LocalBroadcastManager.getInstance(context).registerReceiver(
-                stateChangeBroadcastReceiver, new IntentFilter(TrackingStateMachine.BROADCAST_ACTION_ID));
+                stateChangeReceiver, new IntentFilter(TrackingStateMachine.BROADCAST_ACTION_ID));
     }
 
     public Intent createServiceIntent() {
@@ -44,7 +46,6 @@ public class NotificationHandler implements StateChangeBroadcastReceiver.Listene
         BackgroundServiceSettings serviceSettings = new BackgroundServiceSettings();
         serviceSettings.setRestartPolicy(Service.START_STICKY);
         serviceSettings.enableServiceOnForeground(APP_NOTIFICATION_ID, createServiceNotification());
-        serviceSettings.setWakeLockMode(PowerManager.PARTIAL_WAKE_LOCK);
         intent.putExtra(BackgroundServiceSettings.SERVICESETTINGS_INTENT_ID, serviceSettings);
         return intent;
     }
@@ -53,7 +54,7 @@ public class NotificationHandler implements StateChangeBroadcastReceiver.Listene
         if (notificationBuilder == null) {
             notificationBuilder =
                     new NotificationCompat.Builder(context)
-                            .setSmallIcon(R.mipmap.ic_launcher)
+                            .setSmallIcon(getNotificationIconResId())
                             .setContentTitle(context.getString(R.string.app_name))
                             .setContentText(context.getString(R.string.tracking_off));
         }
@@ -70,16 +71,32 @@ public class NotificationHandler implements StateChangeBroadcastReceiver.Listene
         return notification;
     }
 
-    public void updateNotificationText(String newText) {
-        notificationBuilder.setContentText(newText);
-        notificationManager.notify(APP_NOTIFICATION_ID, notificationBuilder.build());
+    private int getNotificationIconResId() {
+        final boolean useSilhouette = (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP);
+        return useSilhouette ? R.drawable.ic_launcher_white_silhouette : R.mipmap.ic_launcher;
     }
 
     @Override
-    public void onTrackingStateChanged(TrackingStateMachine.State newState) {
+    public void onTrackingStateChanged(TrackingStateMachine.State newState, Date disabledTimeStarted, Date disabledTimeEnds, int disabledTimeInMs) {
         log.info("notification notified with state: " + newState);
-        updateNotificationText(context.getString(
-                TrackingStateMachine.getTrackingStringResourceId(newState)));
 
+        updateNotificationText(newState);
+        setNotificationPriorityByTrackingState(newState);
+
+        notificationManager.notify(APP_NOTIFICATION_ID, notificationBuilder.build());
+    }
+
+    private void updateNotificationText(TrackingStateMachine.State newState) {
+        notificationBuilder.setContentText(context.getString(TrackingStateMachine.getShortTrackingStringResourceId(newState)));
+    }
+
+    private void setNotificationPriorityByTrackingState(TrackingStateMachine.State newState) {
+        // lower priority and visibility when not tracking user
+        notificationBuilder.setPriority(newState == TrackingStateMachine.State.TRACKING_USER ?
+                Notification.PRIORITY_DEFAULT : Notification.PRIORITY_MIN);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            notificationBuilder.setVisibility(newState == TrackingStateMachine.State.TRACKING_USER ?
+                    Notification.VISIBILITY_PUBLIC : Notification.VISIBILITY_SECRET);
+        }
     }
 }

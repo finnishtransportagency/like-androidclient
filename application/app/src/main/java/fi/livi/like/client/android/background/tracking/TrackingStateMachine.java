@@ -9,9 +9,9 @@ import org.slf4j.LoggerFactory;
 
 import fi.livi.like.client.android.Configuration;
 import fi.livi.like.client.android.R;
-import fi.livi.like.client.android.background.googleplayservices.ActivityRecognitionListener;
 import fi.livi.like.client.android.background.datacollectors.location.DistanceCalculator;
 import fi.livi.like.client.android.background.datacollectors.location.LocationHandler;
+import fi.livi.like.client.android.background.googleplayservices.ActivityRecognitionListener;
 import fi.livi.like.client.android.background.util.Broadcaster;
 import fi.livi.like.client.android.background.util.UpdateTimer;
 import fi.livi.like.client.android.dependencies.backend.LikeLocation;
@@ -22,13 +22,16 @@ public class TrackingStateMachine implements ActivityRecognitionListener, Locati
 
     public final static String BROADCAST_ACTION_ID = "fi.livi.like.client.android.trackingstatemachine";
     public final static String BROADCAST_KEY_ID = "newState";
+    private final static float JOURNEY_START_UPDATE_MIN_SPEED = 0;
 
     private final StateMachineClient stateMachineClient;
+    private final TrackingDisabledHandler trackingDisabledHandler;
     private final Broadcaster broadcaster;
     private final DistanceCalculator distanceCalculator;
     private final Configuration configuration;
     private UpdateTimer inactivityTimer;
     private State trackingState = TrackingStateMachine.State.INITIAL;
+
 
     public enum State {
         INITIAL,
@@ -44,8 +47,10 @@ public class TrackingStateMachine implements ActivityRecognitionListener, Locati
         Location getLastLocation();
     }
 
-    public TrackingStateMachine(StateMachineClient stateMachineClient, Broadcaster broadcaster, DistanceCalculator distanceCalculator, Configuration configuration) {
+    public TrackingStateMachine(StateMachineClient stateMachineClient, TrackingDisabledHandler trackingDisabledHandler,
+                                Broadcaster broadcaster, DistanceCalculator distanceCalculator, Configuration configuration) {
         this.stateMachineClient = stateMachineClient;
+        this.trackingDisabledHandler = trackingDisabledHandler;
         this.broadcaster = broadcaster;
         this.distanceCalculator = distanceCalculator;
         this.configuration = configuration;
@@ -64,8 +69,19 @@ public class TrackingStateMachine implements ActivityRecognitionListener, Locati
 
         stateMachineClient.onStateChange(trackingState, newState);
         trackingState = newState;
-        broadcaster.broadcastLocal(
-                BROADCAST_ACTION_ID, BROADCAST_KEY_ID, newState.toString());
+        if (trackingState != State.DISABLED) {
+            trackingDisabledHandler.reset();
+        }
+        broadcastCurrentState();
+    }
+
+    public void setTrackingState(State newState, TrackingDisabledHandler.DisabledTime disabledTime) {
+        if (newState != State.DISABLED) {
+            throw new AssertionError("setTrackingState with DisabledTime can be used only with DISABLED-state!");
+        }
+
+        trackingDisabledHandler.setDisabledTime(disabledTime);
+        setTrackingState(newState);
     }
 
     public void resumeTrackingStateMachine() {
@@ -75,8 +91,12 @@ public class TrackingStateMachine implements ActivityRecognitionListener, Locati
     }
 
     public void broadcastCurrentState() {
-        broadcaster.broadcastLocal(
-                BROADCAST_ACTION_ID, BROADCAST_KEY_ID, trackingState.toString());
+        if (trackingState != State.DISABLED) {
+            broadcaster.broadcastLocal(
+                    BROADCAST_ACTION_ID, BROADCAST_KEY_ID, trackingState.toString());
+        } else {
+            trackingDisabledHandler.broadcastStateLocal();
+        }
     }
 
     @Override
@@ -85,13 +105,8 @@ public class TrackingStateMachine implements ActivityRecognitionListener, Locati
 
         if (trackingState == State.WAITING_MOVEMENT && androidActivityType != DetectedActivity.STILL) {
 
-            if (stateMachineClient.getPreviousJourney() == null) {
-                log.info("no previous journey to compare locations, start TRACKING-state");
-                setTrackingState(State.TRACKING_USER);
-            } else {
-                log.info("previous journey available to compare locations, get current location");
-                setTrackingState(State.USER_MOVING);
-            }
+            log.info("movement detected, start USER_MOVING-state");
+            setTrackingState(State.USER_MOVING);
         } else if (trackingState == State.TRACKING_USER || trackingState == State.USER_MOVING) {
 
             if (androidActivityType == DetectedActivity.STILL) {
@@ -105,20 +120,27 @@ public class TrackingStateMachine implements ActivityRecognitionListener, Locati
     @Override
     public void onLocationUpdated() {
         if (trackingState == State.USER_MOVING) {
-            log.info("onLocationUpdated on USER_MOVING-state, try if we can utilise old journey");
-            Journey previousJourney = stateMachineClient.getPreviousJourney();
-            Location currentLocation = stateMachineClient.getLastLocation();
-            if (previousJourney == null) {
-                log.info("no previous journey available anymore to compare locations, start TRACKING-state");
-                setTrackingState(State.TRACKING_USER);
-            } else if (currentLocation != null) {
-                LikeLocation likeLocation = previousJourney.getLastLikeLocation();
-                float distance = distanceCalculator.distanceBetween(
-                        likeLocation.getLatitude(), likeLocation.getLongitude(),
-                        currentLocation.getLatitude(), currentLocation.getLongitude());
-                log.info("distance from last journey end point " + distance);
-                if (distance > configuration.getDistanceToTriggerNewJourney()) {
-                    log.info("distance from last journey end over " + configuration.getDistanceToTriggerNewJourney() + ", start TRACKING-state");
+            log.info("onLocationUpdated on USER_MOVING-state");
+            final Location currentLocation = stateMachineClient.getLastLocation();
+            if (currentLocation != null) {
+                if (!(currentLocation.getSpeed() > JOURNEY_START_UPDATE_MIN_SPEED)) {
+                    log.info("location speed too low, staying on USER_MOVING-state!");
+                    return;
+                }
+
+                final Journey previousJourney = stateMachineClient.getPreviousJourney();
+                if (previousJourney != null) {
+                    LikeLocation likeLocation = previousJourney.getLastLikeLocation();
+                    float distance = distanceCalculator.distanceBetween(
+                            likeLocation.getLatitude(), likeLocation.getLongitude(),
+                            currentLocation.getLatitude(), currentLocation.getLongitude());
+                    log.info("distance from last journey end point " + distance);
+                    if (distance > configuration.getDistanceToTriggerNewJourney()) {
+                        log.info("distance from last journey end over " + configuration.getDistanceToTriggerNewJourney() + ", start TRACKING-state");
+                        setTrackingState(State.TRACKING_USER);
+                    }
+                } else {
+                    log.info("no previous journey to compare locations, start TRACKING-state");
                     setTrackingState(State.TRACKING_USER);
                 }
             }
@@ -134,7 +156,7 @@ public class TrackingStateMachine implements ActivityRecognitionListener, Locati
         }
     }
 
-    public static int getTrackingStringResourceId(TrackingStateMachine.State state) {
+    public static int getShortTrackingStringResourceId(TrackingStateMachine.State state) {
         int trackingTextResId;
         switch (state) {
             case TRACKING_USER:

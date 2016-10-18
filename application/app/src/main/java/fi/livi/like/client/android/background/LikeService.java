@@ -1,6 +1,5 @@
 package fi.livi.like.client.android.background;
 
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.IntentFilter;
 import android.support.v4.content.LocalBroadcastManager;
@@ -11,14 +10,16 @@ import org.slf4j.LoggerFactory;
 import fi.livi.like.client.android.R;
 import fi.livi.like.client.android.background.data.DataStorage;
 import fi.livi.like.client.android.background.http.HttpLoader;
+import fi.livi.like.client.android.background.http.NetworkMonitor;
 import fi.livi.like.client.android.background.service.BackgroundService;
 import fi.livi.like.client.android.background.tracking.TrackingStateMachine;
 import fi.livi.like.client.android.background.tracking.UserTracker;
 import fi.livi.like.client.android.background.user.UserManager;
 import fi.livi.like.client.android.background.util.Broadcaster;
+import fi.livi.like.client.android.background.tracking.TrackingDisabledHandler;
 import fi.livi.like.client.android.broadcastreceivers.UserLoadingCompletedReceiver;
 
-public class LikeService implements UserLoadingCompletedReceiver.Listener, UserManager.Listener {
+public class LikeService implements UserLoadingCompletedReceiver.Listener, UserManager.Listener, NetworkMonitor.Listener {
 
     private final static org.slf4j.Logger log = LoggerFactory.getLogger(LikeService.class);
 
@@ -28,8 +29,8 @@ public class LikeService implements UserLoadingCompletedReceiver.Listener, UserM
     private final HttpLoader httpLoader;
     private final UserManager userManager;
     private final UserTracker userTracker;
-    private BroadcastReceiver userLoadingCompletedReceiver;
-    private boolean isDisabled = false;
+    private NetworkMonitor networkMonitor;
+    private UserLoadingCompletedReceiver userLoadingCompletedReceiver;
 
     public LikeService(BackgroundService backgroundService) {
         this.backgroundService = backgroundService;
@@ -43,8 +44,15 @@ public class LikeService implements UserLoadingCompletedReceiver.Listener, UserM
     public void resume() {
         log.info("resuming");
         userTracker.getTrackingStateMachine().broadcastCurrentState();
-        if (isDisabled) {
+        if (userTracker.getTrackingStateMachine().getTrackingState() == TrackingStateMachine.State.DISABLED) {
             log.info("currently disabled, not resuming");
+            return;
+        }
+
+        if (!NetworkMonitor.isNetworkAvailable(getBackgroundService())) {
+            log.info("no network, wait until network available and resume then");
+            networkMonitor = new NetworkMonitor(this);
+            networkMonitor.registerNetworkStateListener(getBackgroundService());
             return;
         }
 
@@ -108,19 +116,23 @@ public class LikeService implements UserLoadingCompletedReceiver.Listener, UserM
         return userManager;
     }
 
-    public boolean isDisabled() {
-        return isDisabled;
+    public boolean isTrackingDisabled() {
+        return userTracker.getTrackingStateMachine().getTrackingState() == TrackingStateMachine.State.DISABLED;
     }
 
-    public void setDisabled(boolean disabled) {
-        if (disabled != isDisabled) {
-            isDisabled = disabled;
-            if (isDisabled) {
-                userTracker.getTrackingStateMachine().setTrackingState(TrackingStateMachine.State.DISABLED);
-            } else {
-                userTracker.getTrackingStateMachine().setTrackingState(TrackingStateMachine.State.INITIAL);
-                resume();
-            }
-        }
+    public void setTrackingDisabled(TrackingDisabledHandler.DisabledTime disabledTime) {
+        userTracker.getTrackingStateMachine().setTrackingState(TrackingStateMachine.State.DISABLED, disabledTime);
+    }
+
+    public void setTrackingEnabled() {
+        userTracker.getTrackingStateMachine().setTrackingState(TrackingStateMachine.State.INITIAL);
+        resume();
+    }
+
+    @Override
+    public void onNetworkAvailable() {
+        log.info("network available - resume");
+        networkMonitor = null;
+        resume();
     }
 }

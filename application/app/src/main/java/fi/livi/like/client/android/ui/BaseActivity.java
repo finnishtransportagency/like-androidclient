@@ -38,7 +38,9 @@ public class BaseActivity extends AppCompatActivity
     @Override
     protected void onPause() {
         super.onPause();
-        if (BackgroundService.isRunning) {
+        if (BackgroundService.isSystemShuttingDown) {
+            stopAndUnbindBackgroundService();
+        } else if (BackgroundService.isRunning) {
             unbindService();
         }
     }

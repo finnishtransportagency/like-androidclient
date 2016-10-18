@@ -36,14 +36,22 @@ public class UserTracker implements UpdateTimer.Update, LocationHandler.Listener
         locationHandler = new LocationHandler(likeService, this);
         updateTimer = new UpdateTimer(this);
         googlePlayServicesApiClient = likeService.getBackgroundService().getGooglePlayServicesApiClient();
-        trackingStateMachine = new TrackingStateMachine(this, Broadcaster.getInstance(), new DistanceCalculator(), likeService.getDataStorage().getConfiguration());
+        trackingStateMachine = new TrackingStateMachine(
+                this,
+                new TrackingDisabledHandler(likeService),
+                Broadcaster.getInstance(),
+                new DistanceCalculator(),
+                likeService.getDataStorage().getConfiguration());
         journeyManager = new JourneyManager(likeService, locationHandler, googlePlayServicesApiClient);
     }
 
     private void waitUserMovement() {
         log.info("waitUserMovement");
+        likeService.getDataStorage().setLastAverageLikeActivity(null);
         googlePlayServicesApiClient.startActivityRecognitionUpdates(
-                new ActivityRecognitionRequest(likeService.getDataStorage().getConfiguration().getInternalInactiveActivityRecogInterval()), this);
+                likeService.getDataStorage(),
+                new ActivityRecognitionRequest(likeService.getDataStorage().getConfiguration().getInternalInactiveActivityRecogInterval()),
+                this);
     }
 
     private void userMoving() {
@@ -62,7 +70,9 @@ public class UserTracker implements UpdateTimer.Update, LocationHandler.Listener
 
         locationHandler.requestLocationUpdates();
         googlePlayServicesApiClient.startActivityRecognitionUpdates(
-                new ActivityRecognitionRequest(likeService.getDataStorage().getConfiguration().getInternalActiveActivityRecogInterval()), this);
+                likeService.getDataStorage(),
+                new ActivityRecognitionRequest(likeService.getDataStorage().getConfiguration().getInternalActiveActivityRecogInterval()),
+                this);
     }
 
     private void stopTrackingUser() {

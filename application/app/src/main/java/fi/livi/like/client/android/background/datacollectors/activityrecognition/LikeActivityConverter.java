@@ -1,5 +1,7 @@
 package fi.livi.like.client.android.background.datacollectors.activityrecognition;
 
+import android.location.Location;
+
 import com.google.android.gms.location.ActivityRecognitionResult;
 import com.google.android.gms.location.DetectedActivity;
 
@@ -7,11 +9,19 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
+import fi.livi.like.client.android.background.data.DataStorage;
 import fi.livi.like.client.android.dependencies.backend.LikeActivity;
 
 public class LikeActivityConverter {
 
     private final static org.slf4j.Logger log = LoggerFactory.getLogger(LikeActivityConverter.class);
+
+    private final static float WALKING_TO_VEHICLE_SPEED = 5.6f; // 20km/h
+    private final DataStorage dataStorage;
+
+    public LikeActivityConverter(DataStorage dataStorage) {
+        this.dataStorage = dataStorage;
+    }
 
     public LikeActivity convertToLikeActivity(ActivityRecognitionResult activityRecognitionResult) {
 
@@ -48,7 +58,23 @@ public class LikeActivityConverter {
                 log.debug("no matching like activity found");
         }
 
-        return isValidLikeActivityType(likeType) ? new LikeActivity(likeType, detectedActivity.getConfidence()) : null;
+        if (isValidLikeActivityType(likeType)) {
+            likeType = adjustActivityBasedOnCurrentLocationData(likeType);
+            return new LikeActivity(likeType, detectedActivity.getConfidence());
+        } else {
+            return null;
+        }
+    }
+
+    private LikeActivity.Type adjustActivityBasedOnCurrentLocationData(LikeActivity.Type likeType) {
+        if (LikeActivity.Type.WALKING == likeType) {
+            final Location currentLocation = dataStorage.getLastLocation();
+            if (currentLocation != null && currentLocation.getSpeed() > WALKING_TO_VEHICLE_SPEED) {
+                likeType = LikeActivity.Type.IN_VEHICLE;
+            }
+        }
+
+        return likeType;
     }
 
     private boolean isValidLikeActivityType(LikeActivity.Type likeType) {

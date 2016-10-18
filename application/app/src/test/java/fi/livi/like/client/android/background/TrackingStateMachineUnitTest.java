@@ -11,6 +11,7 @@ import org.junit.Test;
 import fi.livi.like.client.android.Configuration;
 import fi.livi.like.client.android.background.datacollectors.location.DistanceCalculator;
 import fi.livi.like.client.android.background.tracking.Journey;
+import fi.livi.like.client.android.background.tracking.TrackingDisabledHandler;
 import fi.livi.like.client.android.background.tracking.TrackingStateMachine;
 import fi.livi.like.client.android.background.util.Broadcaster;
 import fi.livi.like.client.android.dependencies.backend.LikeLocation;
@@ -29,6 +30,7 @@ import static org.mockito.Mockito.when;
 public class TrackingStateMachineUnitTest {
 
     private TrackingStateMachine trackingStateMachine;
+    private TrackingDisabledHandler trackingDisabledHandler;
     private Broadcaster broadcaster;
     private DistanceCalculator distanceCalculator;
     private Configuration configuration;
@@ -37,11 +39,13 @@ public class TrackingStateMachineUnitTest {
     @Before
     public void setup() {
         stateMachineClient = mock(TrackingStateMachine.StateMachineClient.class);
+        trackingDisabledHandler = mock(TrackingDisabledHandler.class);
         broadcaster = mock(Broadcaster.class);
         distanceCalculator = mock(DistanceCalculator.class);
         configuration = mock(Configuration.class);
 
-        trackingStateMachine = new TrackingStateMachine(stateMachineClient, broadcaster, distanceCalculator, configuration);
+        trackingStateMachine = new TrackingStateMachine(
+                stateMachineClient, trackingDisabledHandler, broadcaster, distanceCalculator, configuration);
 
         when(configuration.getInternalInactivityDelay()).thenReturn(1);
         when(configuration.getDistanceToTriggerNewJourney()).thenReturn(10f);
@@ -63,7 +67,7 @@ public class TrackingStateMachineUnitTest {
         assertThat(trackingStateMachine.getTrackingState(), is(TrackingStateMachine.State.INITIAL));
     }
 
-    // WAITING -> TRACKING (no previous journey)
+    // WAITING -> MOVING/TRACKING (no previous journey)
 
     @Test
     public void should_change_state_from_waiting_without_previous_journey_to_tracking_when_activity_other_than_STILL() {
@@ -72,8 +76,8 @@ public class TrackingStateMachineUnitTest {
 
         trackingStateMachine.onActivityRecognitionUpdate(getActivityRecognitionResult(DetectedActivity.TILTING));
 
-        verifyStateChange(TrackingStateMachine.State.WAITING_MOVEMENT, TrackingStateMachine.State.TRACKING_USER);
-        assertThat(trackingStateMachine.getTrackingState(), is(TrackingStateMachine.State.TRACKING_USER));
+        verifyStateChange(TrackingStateMachine.State.WAITING_MOVEMENT, TrackingStateMachine.State.USER_MOVING);
+        assertThat(trackingStateMachine.getTrackingState(), is(TrackingStateMachine.State.USER_MOVING));
     }
 
     @Test
@@ -138,10 +142,32 @@ public class TrackingStateMachineUnitTest {
     }
 
     @Test
+    public void should_not_change_state_from_user_moving_with_previous_journey_to_tracking_user_when_receiving_location_far_enough_but_speed_not_enough() {
+        trackingStateMachine.setTrackingState(TrackingStateMachine.State.WAITING_MOVEMENT);
+        Journey mockedJourney = mock(Journey.class);
+        Location mockedLocation = mock(Location.class);
+        when(mockedLocation.getSpeed()).thenReturn(0f);
+        LikeLocation mockedLikeLocation = mock(LikeLocation.class);
+        when(stateMachineClient.getPreviousJourney()).thenReturn(mockedJourney);
+        trackingStateMachine.onActivityRecognitionUpdate(getActivityRecognitionResult(DetectedActivity.ON_BICYCLE));
+        reset(stateMachineClient); // reset setting to USER_MOVING
+        when(stateMachineClient.getPreviousJourney()).thenReturn(mockedJourney);
+        when(stateMachineClient.getLastLocation()).thenReturn(mockedLocation);
+        when(distanceCalculator.distanceBetween(anyDouble(), anyDouble(), anyDouble(), anyDouble())).thenReturn(10.01f);
+        when(mockedJourney.getLastLikeLocation()).thenReturn(mockedLikeLocation);
+
+        trackingStateMachine.onLocationUpdated();
+
+        verify(stateMachineClient, never()).onStateChange(any(TrackingStateMachine.State.class), any(TrackingStateMachine.State.class));
+        assertThat(trackingStateMachine.getTrackingState(), is(TrackingStateMachine.State.USER_MOVING));
+    }
+
+    @Test
     public void should_change_state_from_user_moving_with_previous_journey_to_tracking_user_when_receiving_location_far_enough() {
         trackingStateMachine.setTrackingState(TrackingStateMachine.State.WAITING_MOVEMENT);
         Journey mockedJourney = mock(Journey.class);
         Location mockedLocation = mock(Location.class);
+        when(mockedLocation.getSpeed()).thenReturn(0.001f);
         LikeLocation mockedLikeLocation = mock(LikeLocation.class);
         when(stateMachineClient.getPreviousJourney()).thenReturn(mockedJourney);
         trackingStateMachine.onActivityRecognitionUpdate(getActivityRecognitionResult(DetectedActivity.ON_BICYCLE));
@@ -160,16 +186,37 @@ public class TrackingStateMachineUnitTest {
     @Test
     public void should_change_state_from_waiting_with_previous_journey_to_tracking_user_when_receiving_location_with_null_journey() {
         trackingStateMachine.setTrackingState(TrackingStateMachine.State.WAITING_MOVEMENT);
+        Location mockedLocation = mock(Location.class);
+        when(mockedLocation.getSpeed()).thenReturn(0.1f);
         Journey mockedJourney = mock(Journey.class);
         when(stateMachineClient.getPreviousJourney()).thenReturn(mockedJourney);
         trackingStateMachine.onActivityRecognitionUpdate(getActivityRecognitionResult(DetectedActivity.ON_BICYCLE));
         reset(stateMachineClient); // reset setting to USER_MOVING
+        when(stateMachineClient.getLastLocation()).thenReturn(mockedLocation);
 
         when(stateMachineClient.getPreviousJourney()).thenReturn(null);
         trackingStateMachine.onLocationUpdated();
 
         verifyStateChange(TrackingStateMachine.State.USER_MOVING, TrackingStateMachine.State.TRACKING_USER);
         assertThat(trackingStateMachine.getTrackingState(), is(TrackingStateMachine.State.TRACKING_USER));
+    }
+
+    @Test
+    public void should_not_change_state_from_waiting_with_previous_journey_to_tracking_user_when_receiving_location_with_null_journey_but_speed_too_low() {
+        trackingStateMachine.setTrackingState(TrackingStateMachine.State.WAITING_MOVEMENT);
+        Location mockedLocation = mock(Location.class);
+        when(mockedLocation.getSpeed()).thenReturn(0f);
+        Journey mockedJourney = mock(Journey.class);
+        when(stateMachineClient.getPreviousJourney()).thenReturn(mockedJourney);
+        trackingStateMachine.onActivityRecognitionUpdate(getActivityRecognitionResult(DetectedActivity.ON_BICYCLE));
+        reset(stateMachineClient); // reset setting to USER_MOVING
+        when(stateMachineClient.getLastLocation()).thenReturn(mockedLocation);
+
+        when(stateMachineClient.getPreviousJourney()).thenReturn(null);
+        trackingStateMachine.onLocationUpdated();
+
+        verify(stateMachineClient, never()).onStateChange(any(TrackingStateMachine.State.class), any(TrackingStateMachine.State.class));
+        assertThat(trackingStateMachine.getTrackingState(), is(TrackingStateMachine.State.USER_MOVING));
     }
 
     // TRACKING -> WAITING

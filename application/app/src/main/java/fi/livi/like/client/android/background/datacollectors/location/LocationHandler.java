@@ -7,6 +7,7 @@ import android.os.Bundle;
 import org.slf4j.LoggerFactory;
 
 import fi.livi.like.client.android.background.LikeService;
+import fi.livi.like.client.android.background.data.DataStorage;
 
 /**
  * Handle location updates
@@ -15,8 +16,9 @@ public class LocationHandler implements LocationListener {
 
     private final static org.slf4j.Logger log = LoggerFactory.getLogger(LocationHandler.class);
 
-    private Listener listener;
-    private LocationManagerHandler locationManagerHandler;
+    private final Listener listener;
+    private final DataStorage dataStorage;
+    private final LocationManagerHandler locationManagerHandler;
     private LocationFilter locationFilter;
     private LocationAverager locationAverager;
 
@@ -30,6 +32,7 @@ public class LocationHandler implements LocationListener {
         locationFilter = new LocationFilter();
         locationAverager = new LocationAverager();
         this.listener = listener;
+        this.dataStorage = likeService.getDataStorage();
         this.locationManagerHandler =
                 new LocationManagerHandler(likeService.getBackgroundService(), this, likeService.getDataStorage().getConfiguration().getInternalGpsInterval());
     }
@@ -41,6 +44,7 @@ public class LocationHandler implements LocationListener {
     public void stopLocationUpdates() {
         locationAverager.reset();
         locationManagerHandler.stopLocationUpdates();
+        dataStorage.setLastLocation(null);
     }
 
     public Location getAverageLocation() {
@@ -55,6 +59,7 @@ public class LocationHandler implements LocationListener {
             if (locationFilter.isValidLocation(previousLocation, currentLocation)) {
                 locationAverager.onLocationUpdate(currentLocation);
                 previousLocation = currentLocation;
+                dataStorage.setLastLocation(currentLocation);
                 if (listener != null) {
                     listener.onLocationUpdated();
                 }

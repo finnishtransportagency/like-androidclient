@@ -4,8 +4,6 @@ import android.content.Intent;
 
 import org.slf4j.LoggerFactory;
 
-import fi.livi.like.client.android.background.googleplayservices.ActivityRecognitionRequest;
-
 /**
  * IntentSettingsHandler has the basic functionality handling the settings
  * via intent when service is launched.
@@ -28,7 +26,6 @@ public class IntentSettingsHandler {
             handleRestartPolicySetting(settings.getRestartPolicy());
             handleForegroundSettings(settings);
             handleWakeLockSetting(settings.getWakeLockMode());
-            handleActivityRecognitionRequestSetting(settings.getActivityRecognitionRequest());
         }
     }
 
@@ -47,12 +44,6 @@ public class IntentSettingsHandler {
     private void handleWakeLockSetting(int wakeLockMode) {
         if (wakeLockMode != -1) {
             backgroundService.wakeLockHandler.acquireWakelock(wakeLockMode);
-        }
-    }
-
-    private void handleActivityRecognitionRequestSetting(ActivityRecognitionRequest request) {
-        if (request != null) {
-            backgroundService.googlePlayServicesApiClient.startActivityRecognitionUpdates(request, null);
         }
     }
 }

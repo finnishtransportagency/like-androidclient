@@ -1,5 +1,7 @@
 package fi.livi.like.client.android.background;
 
+import android.location.Location;
+
 import com.google.android.gms.location.ActivityRecognitionResult;
 import com.google.android.gms.location.DetectedActivity;
 
@@ -9,6 +11,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
+import fi.livi.like.client.android.background.data.DataStorage;
 import fi.livi.like.client.android.background.datacollectors.activityrecognition.LikeActivityConverter;
 import fi.livi.like.client.android.dependencies.backend.LikeActivity;
 
@@ -20,11 +23,15 @@ import static org.powermock.api.mockito.PowerMockito.when;
 
 public class LikeActivityConverterUnitTest {
 
-    LikeActivityConverter likeActivityConverter;
+    private LikeActivityConverter likeActivityConverter;
+
+    private DataStorage dataStorage;
 
     @Before
     public void setup() {
-        likeActivityConverter = new LikeActivityConverter();
+        dataStorage = mock(DataStorage.class);
+
+        likeActivityConverter = new LikeActivityConverter(dataStorage);
     }
 
     @Test
@@ -83,6 +90,45 @@ public class LikeActivityConverterUnitTest {
         LikeActivity likeActivity = likeActivityConverter.convertToLikeActivity(activityRecognitionResult);
 
         assertThat(likeActivity.getType(), is(LikeActivity.Type.WALKING));
+        assertThat(likeActivity.getConfidence(), is(81));
+    }
+
+    @Test
+    public void should_keep_walking_activity_if_no_location() {
+        ActivityRecognitionResult activityRecognitionResult = mock(ActivityRecognitionResult.class);
+        when(activityRecognitionResult.getMostProbableActivity()).thenReturn(new DetectedActivity(DetectedActivity.WALKING, 81));
+
+        LikeActivity likeActivity = likeActivityConverter.convertToLikeActivity(activityRecognitionResult);
+
+        assertThat(likeActivity.getType(), is(LikeActivity.Type.WALKING));
+        assertThat(likeActivity.getConfidence(), is(81));
+    }
+
+    @Test
+    public void should_keep_walking_activity_if_speed_below_limit() {
+        ActivityRecognitionResult activityRecognitionResult = mock(ActivityRecognitionResult.class);
+        when(activityRecognitionResult.getMostProbableActivity()).thenReturn(new DetectedActivity(DetectedActivity.WALKING, 81));
+        Location location = mock(Location.class);
+        when(location.getSpeed()).thenReturn(5.5f);
+        when(dataStorage.getLastLocation()).thenReturn(location);
+
+        LikeActivity likeActivity = likeActivityConverter.convertToLikeActivity(activityRecognitionResult);
+
+        assertThat(likeActivity.getType(), is(LikeActivity.Type.WALKING));
+        assertThat(likeActivity.getConfidence(), is(81));
+    }
+
+    @Test
+    public void should_convert_walking_to_vehicle_activity_if_speed_high_enough() {
+        ActivityRecognitionResult activityRecognitionResult = mock(ActivityRecognitionResult.class);
+        when(activityRecognitionResult.getMostProbableActivity()).thenReturn(new DetectedActivity(DetectedActivity.WALKING, 81));
+        Location location = mock(Location.class);
+        when(location.getSpeed()).thenReturn(5.7f);
+        when(dataStorage.getLastLocation()).thenReturn(location);
+
+        LikeActivity likeActivity = likeActivityConverter.convertToLikeActivity(activityRecognitionResult);
+
+        assertThat(likeActivity.getType(), is(LikeActivity.Type.IN_VEHICLE));
         assertThat(likeActivity.getConfidence(), is(81));
     }
 }

@@ -10,6 +10,7 @@ import fi.livi.like.client.android.background.LikeService;
 import fi.livi.like.client.android.background.util.Broadcaster;
 import fi.livi.like.client.android.background.util.UncaughtExceptionLogger;
 import fi.livi.like.client.android.background.googleplayservices.GooglePlayServicesApiClient;
+import fi.livi.like.client.android.broadcastreceivers.DeviceShutdownReceiver;
 
 /**
  * BackgroundService provides access to Google Play Services API and certain details of device. These
@@ -22,11 +23,13 @@ import fi.livi.like.client.android.background.googleplayservices.GooglePlayServi
  *
  * See also documentation on methods below.
  */
-public class BackgroundService extends Service {
+public class BackgroundService extends Service implements DeviceShutdownReceiver.Listener {
 
     private final static org.slf4j.Logger log = LoggerFactory.getLogger(BackgroundService.class);
 
     public static boolean isRunning = false;
+    public static boolean isSystemShuttingDown = false;
+
     protected IBinder binder;
     protected GooglePlayServicesApiClient googlePlayServicesApiClient;
     protected DeviceInfo deviceInfo;
@@ -34,6 +37,7 @@ public class BackgroundService extends Service {
     protected WakeLockHandler wakeLockHandler = new WakeLockHandler(this);
     protected IntentSettingsHandler intentSettingsHandler;
     protected UncaughtExceptionLogger exceptionLogger;
+    protected DeviceShutdownReceiver deviceShutdownReceiver;
     private LikeService likeService;
 
     @Override
@@ -62,6 +66,8 @@ public class BackgroundService extends Service {
     protected void createOptional() {
         intentSettingsHandler = new IntentSettingsHandler(this);
         Broadcaster.prepareSingleton(getBaseContext());
+        deviceShutdownReceiver = new DeviceShutdownReceiver(this);
+        deviceShutdownReceiver.register(this);
     }
 
     @Override
@@ -131,5 +137,12 @@ public class BackgroundService extends Service {
 
     public LikeService getLikeService() {
         return likeService;
+    }
+
+    @Override
+    public void onDeviceShutdown() {
+        deviceShutdownReceiver.unregister(this);
+        isSystemShuttingDown = true;
+        stopSelf();
     }
 }

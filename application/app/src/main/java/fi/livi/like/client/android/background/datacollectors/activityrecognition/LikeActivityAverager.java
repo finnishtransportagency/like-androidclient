@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
+import fi.livi.like.client.android.background.data.DataStorage;
 import fi.livi.like.client.android.dependencies.backend.LikeActivity;
 
 public class LikeActivityAverager {
@@ -18,8 +19,19 @@ public class LikeActivityAverager {
     private final static org.slf4j.Logger log = LoggerFactory.getLogger(LikeActivityAverager.class);
 
     private final int AVERAGING_LIKE_ACTIVITY_ARRAY_SIZE = 5;
+    private final int HIGH_CONFIDENCE_LEVEL = 75;
+    private final DataStorage dataStorage;
     private List<LikeActivity> lastLikeActivities = new ArrayList<>();
     private LikeActivity averageLikeActivity;
+
+    public LikeActivityAverager(DataStorage dataStorage) {
+        this.dataStorage = dataStorage;
+        final LikeActivity lastLikeActivity = dataStorage.getLastAverageLikeActivity();
+        if (lastLikeActivity != null) {
+            averageLikeActivity = lastLikeActivity;
+            lastLikeActivities.add(lastLikeActivity);
+        }
+    }
 
     public LikeActivity getAverageLikeActivity() {
         return averageLikeActivity;
@@ -36,8 +48,10 @@ public class LikeActivityAverager {
         }
 
         log.info("onLikeActivityUpdate - current LikeActivity: " + likeActivity);
+        handleHighConfidenceActivities(likeActivity);
+
         lastLikeActivities.add(likeActivity);
-        if (lastLikeActivities.size() > AVERAGING_LIKE_ACTIVITY_ARRAY_SIZE) {
+        while (lastLikeActivities.size() > AVERAGING_LIKE_ACTIVITY_ARRAY_SIZE) {
             lastLikeActivities.remove(0);
         }
 
@@ -59,7 +73,20 @@ public class LikeActivityAverager {
         }
 
         averageLikeActivity = findAverageLikeActivity(sortedLastActivities);
+        dataStorage.setLastAverageLikeActivity(averageLikeActivity);
         log.info("onLikeActivityUpdate - averageLikeActivity: " + averageLikeActivity);
+    }
+
+    private void handleHighConfidenceActivities(LikeActivity likeActivity) {
+        if (likeActivity.getConfidence() > HIGH_CONFIDENCE_LEVEL &&
+                averageLikeActivity != null && averageLikeActivity.getType() != likeActivity.getType()) {
+
+            final int neededAmount = AVERAGING_LIKE_ACTIVITY_ARRAY_SIZE / 2;
+            log.info("LikeActivity confidence high enough, add " + neededAmount + " same objects to give more weight on averaging");
+            for(int i=0; i<neededAmount; i++) {
+                lastLikeActivities.add(likeActivity);
+            }
+        }
     }
 
     private <K,V extends Comparable<? super V>> SortedSet<Map.Entry<K,V>> entriesSortedByValues(Map<K,V> map) {

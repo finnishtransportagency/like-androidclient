@@ -27,8 +27,9 @@ public class JourneyUpdatePostTask implements Runnable {
             restTemplate.postForObject(httpLoader.getDataStorage().getConfiguration().getBackendJourneyUpdateUrl(), journeyUpdates, JourneyUpdate[].class);
             httpLoader.broadcastCompletion(HttpLoader.OperationType.JOURNEY_UPDATE, HttpLoader.NOTIFY_COMPLETED_ID);
         } catch (Exception exception) {
-            log.warn("JourneyUpdatePostTask failed - " + exception.getMessage());
+            log.warn("JourneyUpdatePostTask failed with " + journeyUpdates.size() + " update(s) - " + exception.getMessage());
             httpLoader.broadcastCompletion(HttpLoader.OperationType.JOURNEY_UPDATE, HttpLoader.NOTIFY_FAILED_ID);
+            httpLoader.getFailedJourneyUpdateHandler().addFailedUpdates(journeyUpdates);
         }
     }
 }

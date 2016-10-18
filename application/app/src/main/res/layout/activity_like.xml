@@ -37,34 +37,100 @@
             android:textAppearance="?android:attr/textAppearanceLarge"
             android:textColor="@android:color/white"
             android:text="@string/livi_title"/>
+            style="@style/TextViewOutlineShadow"
     </LinearLayout>
 
     <TextView
-        android:id="@+id/tracking_text_view"
+        android:id="@+id/livi_tracking_text_view"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_centerVertical="true"
         android:layout_centerHorizontal="true"
+        android:gravity="center_horizontal"
         android:textAppearance="?android:attr/textAppearanceLarge"
         android:text=""
         style="@style/TextViewOutlineShadow"
         android:textColor="@android:color/white" />
 
     <Button
-        android:id="@+id/enable_disable_tracking_button"
+        android:id="@+id/livi_cancel_disabled_tracking_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/tracking_text_view"
+        android:layout_below="@+id/livi_tracking_text_view"
+        android:layout_marginTop="@dimen/activity_vertical_margin"
         android:layout_centerHorizontal="true"
-        android:layout_marginTop="10dp"
-        android:text="@string/disable_like_button"
+        android:visibility="gone"
+        android:text="@string/cancel_disabled_tracking_like_button"
         android:textColor="@color/LiViButtonTextColor"
         android:textAllCaps="false"
-        android:onClick="disableLikeTracking"
+        android:onClick="cancelDisabledLikeTracking"
         android:background="@drawable/like_button" />
 
+    <LinearLayout
+        android:id="@+id/livi_disable_tracking_group"
+        android:orientation="vertical"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/livi_tracking_text_view"
+        android:paddingTop="@dimen/activity_vertical_margin"
+        android:layout_centerHorizontal="true" >
+
+        <TextView
+            android:id="@+id/livi_disable_tracking_text_view"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:textAppearance="?android:attr/textAppearanceLarge"
+            android:text="@string/disable_tracking_text"
+            android:textColor="@android:color/white" />
+
+            <LinearLayout
+            android:id="@+id/livi_disable_buttons"
+            android:orientation="horizontal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal">
+
+                <Button
+                    android:id="@+id/livi_disable_tracking_button_1h"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="2dp"
+                    android:text="@string/disable_like_button_1h"
+                    android:textColor="@color/LiViButtonTextColor"
+                    android:textAllCaps="false"
+                    android:onClick="disableLikeTracking"
+                    android:tag="ONE_HOUR"
+                    android:background="@drawable/like_button" />
+
+                <Button
+                    android:id="@+id/livi_disable_tracking_button_12h"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="2dp"
+                    android:text="@string/disable_like_button_12h"
+                    android:textColor="@color/LiViButtonTextColor"
+                    android:textAllCaps="false"
+                    android:onClick="disableLikeTracking"
+                    android:tag="TWELVE_HOURS"
+                    android:background="@drawable/like_button" />
+
+                <Button
+                    android:id="@+id/livi_disable_tracking_button_24h"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="2dp"
+                    android:text="@string/disable_like_button_24h"
+                    android:textColor="@color/LiViButtonTextColor"
+                    android:textAllCaps="false"
+                    android:onClick="disableLikeTracking"
+                    android:tag="TWENTY_FOUR_HOURS"
+                    android:background="@drawable/like_button" />
+        </LinearLayout>
+    </LinearLayout>
+
     <Button
-        android:id="@+id/show_user_id_button"
+        android:id="@+id/livi_show_user_id_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"

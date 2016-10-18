@@ -2,6 +2,11 @@ package fi.livi.like.client.android.util;
 
 import android.location.Location;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import fi.livi.like.client.android.dependencies.backend.JourneyUpdate;
+
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -27,5 +32,13 @@ public class TestUtil {
         when(location.getTime()).thenReturn(time);
 
         return location;
+    }
+
+    public static List<JourneyUpdate> generateMockedJourneyUpdates(int amount) {
+        List<JourneyUpdate> journeyUpdates = new ArrayList<>();
+        for (int i=0; i<amount; i++) {
+            journeyUpdates.add(mock(JourneyUpdate.class));
+        }
+        return journeyUpdates;
     }
 }

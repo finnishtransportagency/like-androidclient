@@ -4,10 +4,6 @@ import android.app.Notification;
 import android.os.Parcel;
 import android.os.Parcelable;
 
-import com.google.android.gms.location.LocationRequest;
-
-import fi.livi.like.client.android.background.googleplayservices.ActivityRecognitionRequest;
-
 /**
  * BackgroundServiceSettings describes the starting parameters which can be given via Intent
  * when launching the BackgroundService.
@@ -38,20 +34,6 @@ public class BackgroundServiceSettings implements Parcelable {
      *  - With wakelock-modes application needs to have "android.permission.WAKE_LOCK"
      */
     private int wakeLockMode = -1;
-
-    /**
-     * Location listener
-     * Set LocationRequest to enable location listener via Intent.
-     * - With some settings application needs to have "android.permission.ACCESS_FINE_LOCATION"
-     */
-    private LocationRequest locationRequest;
-
-    /**
-     * ActivityRecognition listener
-     * Set ActivityRequest to enable activity listener via Intent.
-     * - Application needs to have "com.google.android.gms.permission.ACTIVITY_RECOGNITION"
-     */
-    private ActivityRecognitionRequest activityRecognitionRequest;
 
     // CONSTRUCTORS
 
@@ -110,22 +92,6 @@ public class BackgroundServiceSettings implements Parcelable {
         this.wakeLockMode = wakeLockMode;
     }
 
-    public LocationRequest getLocationRequest() {
-        return locationRequest;
-    }
-
-    public void setLocationRequest(LocationRequest locationRequest) {
-        this.locationRequest = locationRequest;
-    }
-
-    public ActivityRecognitionRequest getActivityRecognitionRequest() {
-        return activityRecognitionRequest;
-    }
-
-    public void setActivityRecognitionRequest(ActivityRecognitionRequest activityRecognitionRequest) {
-        this.activityRecognitionRequest = activityRecognitionRequest;
-    }
-
     @Override
     public String toString() {
         return "BackgroundServiceSettings{" +
@@ -134,8 +100,6 @@ public class BackgroundServiceSettings implements Parcelable {
                 ", notificationId=" + notificationId +
                 ", notification=" + notification +
                 ", wakeLockMode=" + wakeLockMode +
-                ", locationRequest=" + locationRequest +
-                ", activityRecognitionRequest=" + activityRecognitionRequest +
                 '}';
     }
 
@@ -147,8 +111,6 @@ public class BackgroundServiceSettings implements Parcelable {
         notificationId = in.readInt();
         notification = in.readParcelable(Notification.class.getClassLoader());
         wakeLockMode = in.readInt();
-        locationRequest = in.readParcelable(LocationRequest.class.getClassLoader());
-        activityRecognitionRequest = in.readParcelable(ActivityRecognitionRequest.class.getClassLoader());
     }
 
     @Override
@@ -158,8 +120,6 @@ public class BackgroundServiceSettings implements Parcelable {
         dest.writeInt(notificationId);
         dest.writeParcelable(notification, flags);
         dest.writeInt(wakeLockMode);
-        dest.writeParcelable(locationRequest, flags);
-        dest.writeParcelable(activityRecognitionRequest, flags);
     }
 
     public static final Creator<BackgroundServiceSettings> CREATOR = new Creator<BackgroundServiceSettings>() {

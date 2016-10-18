@@ -6,7 +6,7 @@ import android.content.Intent;
 
 import fi.livi.like.client.android.background.user.UserManager;
 
-public class UserManagerBroadcastReceiver extends BroadcastReceiver {
+public class UserManagerReceiver extends BroadcastReceiver {
 
     private final Listener listener;
 
@@ -14,7 +14,7 @@ public class UserManagerBroadcastReceiver extends BroadcastReceiver {
         void onPinCodeRequest();
     }
 
-    public UserManagerBroadcastReceiver(Listener listener) {
+    public UserManagerReceiver(Listener listener) {
         this.listener = listener;
     }
     @Override

@@ -12,8 +12,10 @@ import com.google.android.gms.location.ActivityRecognitionResult;
 
 import org.slf4j.LoggerFactory;
 
+import fi.livi.like.client.android.background.data.DataStorage;
 import fi.livi.like.client.android.background.datacollectors.activityrecognition.LikeActivityAverager;
 import fi.livi.like.client.android.background.datacollectors.activityrecognition.LikeActivityConverter;
+import fi.livi.like.client.android.background.datacollectors.activityrecognition.LikeActivityFilter;
 import fi.livi.like.client.android.dependencies.backend.LikeActivity;
 
 public class ActivityRecognitionUpdateHandler {
@@ -28,6 +30,7 @@ public class ActivityRecognitionUpdateHandler {
     private ActivityRecognitionRequest request;
     private LikeActivityConverter likeActivityConverter;
     private LikeActivityAverager likeActivityAverager;
+    private LikeActivityFilter likeActivityFilter;
     private GoogleApiClient googleApiClient;
     private Context context;
     private boolean isListening = false;
@@ -35,14 +38,16 @@ public class ActivityRecognitionUpdateHandler {
     public ActivityRecognitionUpdateHandler(
             Context context,
             GoogleApiClient googleApiClient,
+            DataStorage dataStorage,
             ActivityRecognitionRequest request,
             ActivityRecognitionListener listener) {
         this.request = request;
         this.googleApiClient = googleApiClient;
         this.context = context;
         this.listener = listener;
-        likeActivityConverter = new LikeActivityConverter();
-        likeActivityAverager = new LikeActivityAverager();
+        likeActivityConverter = new LikeActivityConverter(dataStorage);
+        likeActivityAverager = new LikeActivityAverager(dataStorage);
+        likeActivityFilter = new LikeActivityFilter(dataStorage);
     }
 
     public void startRequestingActivityRecognitionUpdates() {
@@ -88,7 +93,9 @@ public class ActivityRecognitionUpdateHandler {
             if (ActivityRecognitionResult.hasResult(intent)) {
                 ActivityRecognitionResult activityRecognitionResult = ActivityRecognitionResult.extractResult(intent);
                 LikeActivity likeActivity = likeActivityConverter.convertToLikeActivity(activityRecognitionResult);
-                likeActivityAverager.onLikeActivityUpdate(likeActivity);
+                if (likeActivityFilter.isValidLikeActivity(likeActivity)) {
+                    likeActivityAverager.onLikeActivityUpdate(likeActivity);
+                }
 
                 if (listener != null) {
                     listener.onActivityRecognitionUpdate(activityRecognitionResult);

@@ -4,6 +4,8 @@ import android.content.Context;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import org.apache.http.NoHttpResponseException;
+import org.apache.http.client.HttpRequestRetryHandler;
 import org.apache.http.config.RegistryBuilder;
 import org.apache.http.conn.socket.ConnectionSocketFactory;
 import org.apache.http.conn.socket.PlainConnectionSocketFactory;
@@ -11,12 +13,14 @@ import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.apache.http.protocol.HttpContext;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,6 +35,16 @@ public class RestTemplateProvider {
     private final Context context;
     private List<HttpMessageConverter<?>> messageConverters = new ArrayList<>();
     private HttpComponentsClientHttpRequestFactory httpComponentsClientHttpRequestFactory;
+    private HttpRequestRetryHandler retryHandler = new HttpRequestRetryHandler() {
+        public boolean retryRequest(IOException exception, int executionCount, HttpContext context) {
+            if(exception instanceof NoHttpResponseException && executionCount < 3){
+                // reason for this is mainly the same 5 sec time on tracking
+                // interval and connection keep-alive
+                return true;
+            }
+            return false;
+        }
+    };
 
     public RestTemplateProvider(LikeService likeService) {
         this.likeService = likeService;
@@ -52,13 +66,14 @@ public class RestTemplateProvider {
                                 SSLConnectionSocketFactory.STRICT_HOSTNAME_VERIFIER))
                             .build());
             ccm.setMaxTotal(10);
-            ccm.setDefaultMaxPerRoute(2);
+            ccm.setDefaultMaxPerRoute(4);
         } catch (Exception e) {
             log.error(e.getMessage());
             e.printStackTrace();
         }
 
         return HttpClientBuilder.create()
+            .setRetryHandler(retryHandler)
             .setConnectionManager(ccm)
             .build();
     }

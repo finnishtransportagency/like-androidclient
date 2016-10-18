@@ -11,10 +11,10 @@ import org.mockito.runners.MockitoJUnitRunner;
 
 import fi.livi.like.client.android.Configuration;
 import fi.livi.like.client.android.background.data.DataStorage;
+import fi.livi.like.client.android.background.datacollectors.location.LocationHandler;
 import fi.livi.like.client.android.background.googleplayservices.ActivityRecognitionListener;
 import fi.livi.like.client.android.background.googleplayservices.ActivityRecognitionRequest;
 import fi.livi.like.client.android.background.googleplayservices.GooglePlayServicesApiClient;
-import fi.livi.like.client.android.background.datacollectors.location.LocationHandler;
 import fi.livi.like.client.android.background.service.BackgroundService;
 import fi.livi.like.client.android.background.tracking.JourneyManager;
 import fi.livi.like.client.android.background.tracking.TrackingStateMachine;
@@ -24,6 +24,7 @@ import fi.livi.like.client.android.background.util.UpdateTimer;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -47,9 +48,9 @@ public class UserTrackerUnitTest {
     @Mock
     JourneyManager mockedJourneyManager;
 
-    BackgroundService mockedBackgroundService;
-    DataStorage mockedDataStorage;
-    Configuration configuration = new Configuration();
+    private BackgroundService mockedBackgroundService;
+    private DataStorage mockedDataStorage;
+    private Configuration configuration = new Configuration();
 
     @Before
     public void setup() {
@@ -66,18 +67,19 @@ public class UserTrackerUnitTest {
 
     @Test
     public void should_start_listening_activity_recognizer_changes_when_waiting_movement() {
-        verify(mockedGooglePlayServicesApiClient, never()).startActivityRecognitionUpdates(any(ActivityRecognitionRequest.class), any(ActivityRecognitionListener.class));
+        verify(mockedGooglePlayServicesApiClient, never()).startActivityRecognitionUpdates(any(DataStorage.class), any(ActivityRecognitionRequest.class), any(ActivityRecognitionListener.class));
 
         userTracker.onStateChange(TrackingStateMachine.State.INITIAL, TrackingStateMachine.State.WAITING_MOVEMENT);
 
         ArgumentCaptor<ActivityRecognitionRequest> requestCaptor = ArgumentCaptor.forClass(ActivityRecognitionRequest.class);
-        verify(mockedGooglePlayServicesApiClient, times(1)).startActivityRecognitionUpdates(requestCaptor.capture(), any(ActivityRecognitionListener.class));
+        verify(mockedGooglePlayServicesApiClient, times(1)).startActivityRecognitionUpdates(any(DataStorage.class), requestCaptor.capture(), any(ActivityRecognitionListener.class));
         assertThat(requestCaptor.getValue().getActivityUpdateIntervalInSecs(), is(new Configuration().getInternalInactiveActivityRecogInterval()));
+        verify(mockedDataStorage).setLastAverageLikeActivity(null);
     }
 
     @Test
     public void should_request_location_updates_when_user_moving() {
-        verify(mockedGooglePlayServicesApiClient, never()).startActivityRecognitionUpdates(any(ActivityRecognitionRequest.class), any(ActivityRecognitionListener.class));
+        verify(mockedGooglePlayServicesApiClient, never()).startActivityRecognitionUpdates(any(DataStorage.class), any(ActivityRecognitionRequest.class), any(ActivityRecognitionListener.class));
         userTracker.onStateChange(TrackingStateMachine.State.INITIAL, TrackingStateMachine.State.WAITING_MOVEMENT);
         reset(mockedLocationHandler);
 
@@ -88,13 +90,13 @@ public class UserTrackerUnitTest {
 
     @Test
     public void should_request_location_updates_and_adjust_activity_recognizer_interval_when_starting_to_track_user() {
-        verify(mockedGooglePlayServicesApiClient, never()).startActivityRecognitionUpdates(any(ActivityRecognitionRequest.class), any(ActivityRecognitionListener.class));
+        verify(mockedGooglePlayServicesApiClient, never()).startActivityRecognitionUpdates(any(DataStorage.class), any(ActivityRecognitionRequest.class), any(ActivityRecognitionListener.class));
         userTracker.onStateChange(TrackingStateMachine.State.INITIAL, TrackingStateMachine.State.WAITING_MOVEMENT);
 
         userTracker.onStateChange(TrackingStateMachine.State.WAITING_MOVEMENT, TrackingStateMachine.State.TRACKING_USER);
 
         ArgumentCaptor<ActivityRecognitionRequest> requestCaptor = ArgumentCaptor.forClass(ActivityRecognitionRequest.class);
-        verify(mockedGooglePlayServicesApiClient, times(2)).startActivityRecognitionUpdates(requestCaptor.capture(), any(ActivityRecognitionListener.class));
+        verify(mockedGooglePlayServicesApiClient, times(2)).startActivityRecognitionUpdates(any(DataStorage.class), requestCaptor.capture(), any(ActivityRecognitionListener.class));
         assertThat(requestCaptor.getAllValues().get(1).getActivityUpdateIntervalInSecs(), is(new Configuration().getInternalActiveActivityRecogInterval()));
         verify(mockedLocationHandler).requestLocationUpdates();
         verify(mockedUpdateTimer).startTimer(new Configuration().getTrackingUserInterval());
@@ -102,7 +104,7 @@ public class UserTrackerUnitTest {
 
     @Test
     public void should_stop_location_updates_and_adjust_activity_recognizer_interval_when_resuming_from_tracking_to_waiting_movement() {
-        verify(mockedGooglePlayServicesApiClient, never()).startActivityRecognitionUpdates(any(ActivityRecognitionRequest.class), any(ActivityRecognitionListener.class));
+        verify(mockedGooglePlayServicesApiClient, never()).startActivityRecognitionUpdates(any(DataStorage.class), any(ActivityRecognitionRequest.class), any(ActivityRecognitionListener.class));
         userTracker.onStateChange(TrackingStateMachine.State.INITIAL, TrackingStateMachine.State.WAITING_MOVEMENT);
         userTracker.onStateChange(TrackingStateMachine.State.WAITING_MOVEMENT, TrackingStateMachine.State.TRACKING_USER);
         reset(mockedLocationHandler);
@@ -110,16 +112,17 @@ public class UserTrackerUnitTest {
         userTracker.onStateChange(TrackingStateMachine.State.TRACKING_USER, TrackingStateMachine.State.WAITING_MOVEMENT);
 
         ArgumentCaptor<ActivityRecognitionRequest> requestCaptor = ArgumentCaptor.forClass(ActivityRecognitionRequest.class);
-        verify(mockedGooglePlayServicesApiClient, times(3)).startActivityRecognitionUpdates(requestCaptor.capture(), any(ActivityRecognitionListener.class));
+        verify(mockedGooglePlayServicesApiClient, times(3)).startActivityRecognitionUpdates(any(DataStorage.class), requestCaptor.capture(), any(ActivityRecognitionListener.class));
         assertThat(requestCaptor.getAllValues().get(2).getActivityUpdateIntervalInSecs(), is(new Configuration().getInternalInactiveActivityRecogInterval()));
         verify(mockedLocationHandler).stopLocationUpdates();
         verify(mockedUpdateTimer).stopTimer();
         verify(mockedJourneyManager).endJourney();
+        verify(mockedDataStorage, atLeast(1)).setLastAverageLikeActivity(null);
     }
 
     @Test
     public void should_stop_location_updates_and_adjust_activity_recognizer_interval_when_resuming_from_user_moving_to_waiting_movement() {
-        verify(mockedGooglePlayServicesApiClient, never()).startActivityRecognitionUpdates(any(ActivityRecognitionRequest.class), any(ActivityRecognitionListener.class));
+        verify(mockedGooglePlayServicesApiClient, never()).startActivityRecognitionUpdates(any(DataStorage.class), any(ActivityRecognitionRequest.class), any(ActivityRecognitionListener.class));
         userTracker.onStateChange(TrackingStateMachine.State.INITIAL, TrackingStateMachine.State.WAITING_MOVEMENT);
         userTracker.onStateChange(TrackingStateMachine.State.WAITING_MOVEMENT, TrackingStateMachine.State.USER_MOVING);
         reset(mockedLocationHandler);
@@ -128,9 +131,10 @@ public class UserTrackerUnitTest {
         userTracker.onStateChange(TrackingStateMachine.State.USER_MOVING, TrackingStateMachine.State.WAITING_MOVEMENT);
 
         ArgumentCaptor<ActivityRecognitionRequest> requestCaptor = ArgumentCaptor.forClass(ActivityRecognitionRequest.class);
-        verify(mockedGooglePlayServicesApiClient, times(1)).startActivityRecognitionUpdates(requestCaptor.capture(), any(ActivityRecognitionListener.class));
+        verify(mockedGooglePlayServicesApiClient, times(1)).startActivityRecognitionUpdates(any(DataStorage.class), requestCaptor.capture(), any(ActivityRecognitionListener.class));
         assertThat(requestCaptor.getAllValues().get(0).getActivityUpdateIntervalInSecs(), is(new Configuration().getInternalInactiveActivityRecogInterval()));
         verify(mockedLocationHandler).stopLocationUpdates();
+        verify(mockedDataStorage, atLeast(1)).setLastAverageLikeActivity(null);
     }
 
     @Test

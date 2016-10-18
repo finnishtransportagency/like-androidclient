@@ -10,6 +10,8 @@ import com.google.android.gms.location.LocationServices;
 
 import org.slf4j.LoggerFactory;
 
+import fi.livi.like.client.android.background.data.DataStorage;
+
 public class GooglePlayServicesApiClient implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
 
     private final static org.slf4j.Logger log = LoggerFactory.getLogger(GooglePlayServicesApiClient.class);
@@ -78,9 +80,9 @@ public class GooglePlayServicesApiClient implements GoogleApiClient.ConnectionCa
                 .build();
     }
 
-    public void startActivityRecognitionUpdates(ActivityRecognitionRequest request, ActivityRecognitionListener listener) {
+    public void startActivityRecognitionUpdates(DataStorage dataStorage, ActivityRecognitionRequest request, ActivityRecognitionListener listener) {
         stopActivityRecognitionUpdates();
-        activityUpdateHandler = new ActivityRecognitionUpdateHandler(context, googleApiClient, request, listener);
+        activityUpdateHandler = new ActivityRecognitionUpdateHandler(context, googleApiClient, dataStorage, request, listener);
         if (googleApiClient.isConnected()) {
             activityUpdateHandler.startRequestingActivityRecognitionUpdates();
         } else {

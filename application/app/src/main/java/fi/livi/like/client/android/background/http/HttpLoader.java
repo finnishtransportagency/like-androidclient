@@ -33,21 +33,22 @@ public class HttpLoader {
         JOURNEY_UPDATE
     }
 
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(3);
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(5);
     private final RestTemplateProvider restTemplateProvider;
+    private final FailedJourneyUpdateHandler failedJourneyUpdateHandler;
     private ScheduledFuture userLoaderHandle;
-    private ScheduledFuture journeyUpdatePostingHandle;
 
     public HttpLoader(LikeService likeService) {
         this.likeService = likeService;
         restTemplateProvider = new RestTemplateProvider(likeService);
+        failedJourneyUpdateHandler = new FailedJourneyUpdateHandler(this, likeService.getDataStorage().getConfiguration());
     }
 
     public RestTemplate getRestTemplate() {
         return restTemplateProvider.getRestTemplate();
     }
 
-    public void broadcastCompletion(OperationType operationType, String success) {
+    synchronized public void broadcastCompletion(OperationType operationType, String success) {
         Intent intent = new Intent(BROADCAST_ACTION_ID);
         intent.putExtra(operationType.toString(), success);
         LocalBroadcastManager.getInstance(likeService.getBackgroundService()).sendBroadcast(intent);
@@ -57,31 +58,25 @@ public class HttpLoader {
         return likeService.getDataStorage();
     }
 
+    public FailedJourneyUpdateHandler getFailedJourneyUpdateHandler() {
+        return failedJourneyUpdateHandler;
+    }
+
     // operations
 
     public void loadUser(User user) {
-        stopLoadingUser();
-            userLoaderHandle = scheduler.schedule(
-                    new UserLoadingTask(this, user), 0, TimeUnit.SECONDS);
+        stopOperation(userLoaderHandle);
+        userLoaderHandle = scheduler.schedule(
+                new UserLoadingTask(this, user), 0, TimeUnit.SECONDS);
     }
 
-    public void stopLoadingUser() {
-        if (userLoaderHandle != null) {
-            userLoaderHandle.cancel(true);
-            userLoaderHandle = null;
-        }
+    public ScheduledFuture postJourneyUpdate(List<JourneyUpdate> journeyUpdates) {
+        return scheduler.schedule(new JourneyUpdatePostTask(this, journeyUpdates), 0, TimeUnit.SECONDS);
     }
 
-    public void postJourneyUpdate(List<JourneyUpdate> journeyUpdates) {
-        stopPostingJourneyUpdate();
-        journeyUpdatePostingHandle = scheduler.schedule(
-                new JourneyUpdatePostTask(this, journeyUpdates), 0, TimeUnit.SECONDS);
-    }
-
-    public void stopPostingJourneyUpdate() {
-        if (journeyUpdatePostingHandle != null) {
-            journeyUpdatePostingHandle.cancel(true);
-            journeyUpdatePostingHandle = null;
+    private void stopOperation(ScheduledFuture task) {
+        if (task != null) {
+            task.cancel(true);
         }
     }
 }
