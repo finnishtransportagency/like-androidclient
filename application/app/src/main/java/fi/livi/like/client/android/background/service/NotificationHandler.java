@@ -6,7 +6,7 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.os.Build;
+import android.os.PowerManager;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationManagerCompat;
 import android.support.v4.app.TaskStackBuilder;
@@ -44,8 +44,9 @@ public class NotificationHandler implements StateChangeReceiver.Listener {
     public Intent createServiceIntent() {
         Intent intent = new Intent(context, BackgroundService.class);
         BackgroundServiceSettings serviceSettings = new BackgroundServiceSettings();
-        serviceSettings.setRestartPolicy(Service.START_STICKY);
+        serviceSettings.setRestartPolicy(Service.START_REDELIVER_INTENT);
         serviceSettings.enableServiceOnForeground(APP_NOTIFICATION_ID, createServiceNotification());
+        serviceSettings.setWakeLockMode(PowerManager.PARTIAL_WAKE_LOCK);
         intent.putExtra(BackgroundServiceSettings.SERVICESETTINGS_INTENT_ID, serviceSettings);
         return intent;
     }
@@ -79,24 +80,11 @@ public class NotificationHandler implements StateChangeReceiver.Listener {
     @Override
     public void onTrackingStateChanged(TrackingStateMachine.State newState, Date disabledTimeStarted, Date disabledTimeEnds, int disabledTimeInMs) {
         log.info("notification notified with state: " + newState);
-
         updateNotificationText(newState);
-        setNotificationPriorityByTrackingState(newState);
-
         notificationManager.notify(APP_NOTIFICATION_ID, notificationBuilder.build());
     }
 
     private void updateNotificationText(TrackingStateMachine.State newState) {
         notificationBuilder.setContentText(context.getString(TrackingStateMachine.getShortTrackingStringResourceId(newState)));
-    }
-
-    private void setNotificationPriorityByTrackingState(TrackingStateMachine.State newState) {
-        // lower priority and visibility when not tracking user
-        notificationBuilder.setPriority(newState == TrackingStateMachine.State.TRACKING_USER ?
-                Notification.PRIORITY_DEFAULT : Notification.PRIORITY_MIN);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            notificationBuilder.setVisibility(newState == TrackingStateMachine.State.TRACKING_USER ?
-                    Notification.VISIBILITY_PUBLIC : Notification.VISIBILITY_SECRET);
-        }
     }
 }

@@ -42,8 +42,8 @@ public class BackgroundService extends Service implements DeviceShutdownReceiver
 
     @Override
     public void onCreate() {
-        super.onCreate();
         log.info("onCreate");
+        super.onCreate();
         exceptionLogger = new UncaughtExceptionLogger(Thread.currentThread());
         createLocalBinder();
         deviceInfo = new DeviceInfo(getBaseContext());
@@ -96,8 +96,8 @@ public class BackgroundService extends Service implements DeviceShutdownReceiver
 
     @Override
     public void onDestroy() {
-        super.onDestroy();
         log.info("onDestroy");
+        super.onDestroy();
         googlePlayServicesApiClient.close();
         likeService.close();
 

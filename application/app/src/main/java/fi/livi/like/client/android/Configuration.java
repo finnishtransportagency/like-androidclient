@@ -11,7 +11,7 @@ public class Configuration {
     private final String BACKEND_GET_USER_URL = BACKEND_SERVER_URL + ""; // add here the backend url of your system for loading user
     private final String BACKEND_JOURNEY_UPDATE_URL = BACKEND_SERVER_URL + ""; // add here the backend url of your system for updating journey data
     // Intervals / delays
-    private final int INTERNAL_INACTIVE_ACTIVITY_RECOG_INTERVAL = 30;
+    private final int INTERNAL_INACTIVE_ACTIVITY_RECOG_INTERVAL = 15;
     private final int INTERNAL_ACTIVE_ACTIVITY_RECOG_INTERVAL = 5;
     private final int INTERNAL_GPS_INTERVAL = 1;
     private final int INTERNAL_INACTIVITY_DELAY = 60 * 5;
