@@ -17,8 +17,7 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <service android:name=".background.service.BackgroundService"/>
-        <receiver android:name="fi.livi.like.client.android.background.util.AutoStarter" >
+        <receiver android:name=".ui.util.AutoStarter" >
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>

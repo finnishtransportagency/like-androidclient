@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">Livi-Like-background-service</string>
+
+    // keep in sync with ui strings
+
+    <string name="tracking_on">Tiedonkeruu käynnissä</string>
+    <string name="tracking_off">Tiedonkeruu ei käynnissä</string>
+    <string name="tracking_disabled">Seuranta estetty</string>
+    <string name="user_loading_failed">Käyttäjän lataus epäonnistui. Käynnistä puhelin uudelleen.</string>
+</resources>

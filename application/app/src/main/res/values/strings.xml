@@ -3,9 +3,6 @@
 
     <string name="livi_title">Liikennevirasto - LiKe</string>
 
-    <string name="tracking_on">Tiedonkeruu käynnissä</string>
-    <string name="tracking_off">Tiedonkeruu ei käynnissä</string>
-    <string name="tracking_disabled">Seuranta estetty</string>
     <string name="tracking_disabled_in_detail">Seurannan esto asetettu %1$s klo %2$s asti</string>
     <string name="disable_tracking_text">Estä seuranta:</string>
     <string name="disable_like_button_1h">1 h</string>
@@ -27,6 +24,7 @@
     <string name="permissions_phone">Sovellus käyttää puhelimen IMEI-koodia osana käyttäjän tunnistusta ja sen lukemiseen tarvitaan puhelimen käyttöoikeus.</string>
     <string name="permissions_location">Seuratakseen käyttäjän liikkeitä sovellus tarvitsee puhelimen sijainnin käyttöoikeuden.</string>
     <string name="permissions_file">Sovellus kerää toiminnastaan logia, jonka tiedostoon keräämiseen tarvitaan tiedostojen käyttöoikeus. Logia ei lähetetä mihinkään ilman käyttäjän lupaa.</string>
+
     // actions
 
     <string name="show_user_id_action">Näytä käyttäjätunnukseni</string>

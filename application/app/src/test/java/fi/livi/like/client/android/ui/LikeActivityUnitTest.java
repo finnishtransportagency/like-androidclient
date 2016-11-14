@@ -15,12 +15,13 @@ import org.robolectric.annotation.Config;
 import org.robolectric.util.ActivityController;
 
 import fi.livi.like.client.android.BuildConfig;
-import fi.livi.like.client.android.background.LikeService;
-import fi.livi.like.client.android.background.googleplayservices.GooglePlayServiceLibraryChecker;
-import fi.livi.like.client.android.background.service.BackgroundService;
-import fi.livi.like.client.android.background.service.NotificationHandler;
-import fi.livi.like.client.android.background.service.ServiceBinder;
+import fi.livi.like.client.android.backgroundservice.LikeService;
+import fi.livi.like.client.android.backgroundservice.googleplayservices.GooglePlayServiceLibraryChecker;
+import fi.livi.like.client.android.backgroundservice.service.BackgroundService;
+import fi.livi.like.client.android.backgroundservice.service.BackgroundServiceHandler;
+import fi.livi.like.client.android.backgroundservice.service.ServiceBinder;
 import fi.livi.like.client.android.ui.util.RuntimePermissionChecker;
+import fi.livi.like.client.android.ui.util.SettingsChecker;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -37,7 +38,6 @@ public class LikeActivityUnitTest {
     private BackgroundServiceHandler backgroundServiceHandler;
     private RuntimePermissionChecker runtimePermissionChecker;
     private SettingsChecker settingsChecker;
-    private NotificationHandler notificationHandler;
     private GooglePlayServiceLibraryChecker googlePlayServiceLibraryChecker;
 
     @InjectMocks
@@ -52,7 +52,6 @@ public class LikeActivityUnitTest {
         backgroundServiceHandler = mock(BackgroundServiceHandler.class);
         runtimePermissionChecker = mock(RuntimePermissionChecker.class);
         settingsChecker = mock(SettingsChecker.class);
-        notificationHandler = mock(NotificationHandler.class);
         googlePlayServiceLibraryChecker = mock(GooglePlayServiceLibraryChecker.class);
 
         when(backgroundService.getLikeService()).thenReturn(likeService);

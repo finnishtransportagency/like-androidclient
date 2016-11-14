@@ -21,17 +21,21 @@ import org.slf4j.LoggerFactory;
 import java.util.Date;
 
 import fi.livi.like.client.android.R;
-import fi.livi.like.client.android.background.http.HttpLoader;
-import fi.livi.like.client.android.background.service.BackgroundService;
-import fi.livi.like.client.android.background.service.NotificationHandler;
-import fi.livi.like.client.android.background.tracking.TrackingDisabledHandler;
-import fi.livi.like.client.android.background.tracking.TrackingStateMachine;
-import fi.livi.like.client.android.background.user.UserManager;
-import fi.livi.like.client.android.broadcastreceivers.StateChangeReceiver;
-import fi.livi.like.client.android.broadcastreceivers.UserLoadingCompletedReceiver;
-import fi.livi.like.client.android.broadcastreceivers.UserManagerReceiver;
+import fi.livi.like.client.android.backgroundservice.broadcastreceivers.StateChangeReceiver;
+import fi.livi.like.client.android.backgroundservice.broadcastreceivers.UserLoadingCompletedReceiver;
+import fi.livi.like.client.android.backgroundservice.broadcastreceivers.UserManagerReceiver;
+import fi.livi.like.client.android.backgroundservice.http.HttpLoader;
+import fi.livi.like.client.android.backgroundservice.service.BackgroundService;
+import fi.livi.like.client.android.backgroundservice.service.BaseActivity;
+import fi.livi.like.client.android.ui.util.NotificationHandler;
+import fi.livi.like.client.android.backgroundservice.tracking.TrackingDisabledHandler;
+import fi.livi.like.client.android.backgroundservice.tracking.TrackingStateMachine;
+import fi.livi.like.client.android.backgroundservice.tracking.TrackingStrings;
+import fi.livi.like.client.android.backgroundservice.user.UserManager;
 import fi.livi.like.client.android.ui.components.NotifierDialog;
+import fi.livi.like.client.android.ui.util.PinCodeDialog;
 import fi.livi.like.client.android.ui.util.RuntimePermissionChecker;
+import fi.livi.like.client.android.ui.util.SettingsChecker;
 import fi.livi.like.client.android.ui.util.TimeFormatter;
 
 public class LikeActivity extends BaseActivity
@@ -53,6 +57,7 @@ public class LikeActivity extends BaseActivity
     private LinearLayout disableTrackingViewGroup;
     private Button cancelDisabledTrackingButton;
     private SettingsChecker settingsChecker;
+    private TrackingStrings trackingStrings;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,7 +68,8 @@ public class LikeActivity extends BaseActivity
         trackingTextView = (TextView)findViewById(R.id.livi_tracking_text_view);
         disableTrackingViewGroup = (LinearLayout) findViewById(R.id.livi_disable_tracking_group);
         cancelDisabledTrackingButton = (Button) findViewById(R.id.livi_cancel_disabled_tracking_button);
-        notificationHandler = new NotificationHandler(getBaseContext(), NotificationManagerCompat.from(this));
+        notificationHandler = new NotificationHandler(
+                getBaseContext(), NotificationManagerCompat.from(this), LikeActivity.class);
         registerBroadcastReceivers();
     }
 
@@ -97,6 +103,8 @@ public class LikeActivity extends BaseActivity
     private void unregisterActivityReceiver(BroadcastReceiver receiver) {
         if (receiver != null) {
             LocalBroadcastManager.getInstance(backgroundService).unregisterReceiver(receiver);
+            // receiver is 'nulled' when unregistered
+            //noinspection UnusedAssignment
             receiver = null;
         }
     }
@@ -110,6 +118,9 @@ public class LikeActivity extends BaseActivity
     protected void onBackgroundServiceConnected(ComponentName className, IBinder service) {
         super.onBackgroundServiceConnected(className, service);
         prepareGooglePlayServices();//after prepared -> onGooglePlayServicesPrepared()
+        trackingStrings = getBackgroundService().getLikeService().getTrackingStrings();
+        notificationHandler.setTrackingStrings(trackingStrings);
+        notificationHandler.updateNotificationTextToLastKnownState();
     }
 
     public void onGooglePlayServicesPrepared() {
@@ -176,7 +187,7 @@ public class LikeActivity extends BaseActivity
                             TimeFormatter.formatToLocalDateTime(TimeFormatter.DDMMYYYY_DATE_FORMAT, disabledTimeStarted),
                             TimeFormatter.formatToLocalDateTime(TimeFormatter.TIME_FORMAT_NO_SECONDS, disabledTimeEnds)));
         } else {
-            trackingTextView.setText(getString(TrackingStateMachine.getShortTrackingStringResourceId(newState)));
+            trackingTextView.setText(TrackingStateMachine.getShortTrackingString(newState, trackingStrings));
             disableTrackingViewGroup.setVisibility(View.VISIBLE);
             cancelDisabledTrackingButton.setVisibility(View.INVISIBLE);
         }

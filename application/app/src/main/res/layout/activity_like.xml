@@ -15,7 +15,8 @@
         android:orientation="horizontal"
         android:layout_width="match_parent"
         android:layout_height="80dp"
-        android:layout_gravity="center_horizontal|top" >
+        android:layout_gravity="center_horizontal|top"
+        android:background="@color/LiViColor" >
 
         <ImageView
             android:id="@+id/livi_logo"
@@ -23,7 +24,8 @@
             android:layout_height="match_parent"
             android:layout_gravity="start"
             android:src="@drawable/livi_logo_transparent"
-            android:contentDescription="@string/logo_content_description" />
+            android:contentDescription="@string/logo_content_description"
+            android:background="@color/LiViColor" />
 
         <Space
             android:layout_width="20dp"
@@ -36,8 +38,9 @@
             android:layout_gravity="center"
             android:textAppearance="?android:attr/textAppearanceLarge"
             android:textColor="@android:color/white"
-            android:text="@string/livi_title"/>
-            style="@style/TextViewOutlineShadow"
+            android:background="@color/LiViColor"
+            android:text="@string/livi_title"
+            style="@style/TextViewOutlineShadow" />
     </LinearLayout>
 
     <TextView
@@ -50,7 +53,8 @@
         android:textAppearance="?android:attr/textAppearanceLarge"
         android:text=""
         style="@style/TextViewOutlineShadow"
-        android:textColor="@android:color/white" />
+        android:textColor="@android:color/white"
+        android:background="@color/LiViColor" />
 
     <Button
         android:id="@+id/livi_cancel_disabled_tracking_button"
@@ -73,6 +77,7 @@
         android:layout_height="wrap_content"
         android:layout_below="@+id/livi_tracking_text_view"
         android:paddingTop="@dimen/activity_vertical_margin"
+        android:background="@color/LiViColor"
         android:layout_centerHorizontal="true" >
 
         <TextView
@@ -82,6 +87,7 @@
             android:layout_gravity="center"
             android:textAppearance="?android:attr/textAppearanceLarge"
             android:text="@string/disable_tracking_text"
+            android:background="@color/LiViColor"
             android:textColor="@android:color/white" />
 
             <LinearLayout
@@ -89,7 +95,8 @@
             android:orientation="horizontal"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal">
+            android:layout_gravity="center_horizontal"
+            android:background="@color/LiViColor" >
 
                 <Button
                     android:id="@+id/livi_disable_tracking_button_1h"
